@@ -20,7 +20,7 @@
 #include "ns3/ssid.h"
 #include "load-balancer.h"
 
-// Default Network Topology
+// Network Topology
 //
 //  wifi 10.2.0       wifi 10.1.1.0       wifi 10.1.3.0
 //
@@ -33,28 +33,6 @@
 
 using namespace ns3;
 
-void
-ThroughputMonitor (FlowMonitorHelper *fmhelper, Ptr<FlowMonitor> flowMon)
-{
-  std::map<FlowId, FlowMonitor::FlowStats> flowStats = flowMon->GetFlowStats ();
-  Ptr<Ipv4FlowClassifier> classing = DynamicCast<Ipv4FlowClassifier> (fmhelper->GetClassifier ());
-  for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator stats = flowStats.begin (); stats != flowStats.end (); ++stats)
-    {
-      Ipv4FlowClassifier::FiveTuple fiveTuple = classing->FindFlow (stats->first);
-      std::cout << "Flow ID			: "<< stats->first << " ; " << fiveTuple.sourceAddress << " -----> " << fiveTuple.destinationAddress << std::endl;
-      std::cout << "Tx Packets = " << stats->second.txPackets << std::endl;
-      std::cout << "Rx Packets = " << stats->second.rxPackets << std::endl;
-      std::cout << "Duration		: "<< (stats->second.timeLastRxPacket.GetSeconds () - stats->second.timeFirstTxPacket.GetSeconds ()) << std::endl;
-      std::cout << "Last Received Packet	: "<< stats->second.timeLastRxPacket.GetSeconds () << " Seconds" << std::endl;
-      std::cout << "Throughput: " << stats->second.rxBytes * 8.0 / (stats->second.timeLastRxPacket.GetSeconds () - stats->second.timeFirstTxPacket.GetSeconds ()) / 1024 / 1024  << " Mbps" << std::endl;
-      if (stats->first == 1)
-        {
-        }
-      std::cout << "---------------------------------------------------------------------------" << std::endl;
-    }
-  flowMon->SerializeToXmlFile ("ThroughputMonitor.xml", true, true);
-}
-
 
 
 NS_LOG_COMPONENT_DEFINE ("Topology");
@@ -64,6 +42,7 @@ int main(int argc, char *argv[]) {
   LogComponentEnable ("Topology", LOG_LEVEL_ALL);
   LogComponentEnable ("LoadBalancer", LOG_LEVEL_ALL);
   LogComponentEnable ("UdpEchoClientApplication", LOG_LEVEL_INFO);
+  LogComponentEnable ("PacketSink", LOG_LEVEL_INFO);
 
 
 	// Create three sender and three receivers
@@ -126,6 +105,7 @@ int main(int argc, char *argv[]) {
   uint16_t port = 8000;
 
 
+  // Senders
   UdpEchoClientHelper echoClient (loadBalancerInterface.GetAddress (0), port);
   echoClient.SetAttribute ("MaxPackets", UintegerValue (10.0));
   echoClient.SetAttribute ("Interval", TimeValue (Seconds (1.0)));
@@ -141,11 +121,19 @@ int main(int argc, char *argv[]) {
   
 
 
+  // Load Balancer
   Ptr<LoadBalancer> loadBalancerApp = CreateObject<LoadBalancer> (port, receiverInterface);
   loadBalancerNode.Get (0)->AddApplication (loadBalancerApp);
   loadBalancerApp->SetStartTime (Seconds (0.0));
   loadBalancerApp->SetStopTime (Seconds (10.0));
 
+
+  // Receivers
+  PacketSinkHelper sink ("ns3::TcpSocketFactory",
+                         InetSocketAddress (Ipv4Address::GetAny (), port));
+  ApplicationContainer sinkApps = sink.Install (receiverNodes);
+  sinkApps.Start (Seconds (0.0));
+  sinkApps.Stop (Seconds (10.0));
 
   Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
 
