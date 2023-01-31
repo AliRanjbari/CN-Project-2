@@ -7,12 +7,8 @@
 * and the LoadBalancer sends that message to a random reciever with TCP protocol
 * 
 * Note that all the connections use 802.11 standard
-* 
-* (sender)-*                          *-(receiver)
-* (sender)-*    *-(LoadBalancer)-*    *-(receiver)
-* (sender)-*                          *-(receiver)
-
 */
+
 #include "ns3/core-module.h"
 #include "ns3/network-module.h"
 #include "ns3/internet-module.h"
@@ -22,7 +18,6 @@
 #include "ns3/yans-wifi-helper.h"
 #include "ns3/flow-monitor-module.h"
 #include "ns3/ssid.h"
-
 #include "load-balancer.h"
 
 // Default Network Topology
@@ -103,27 +98,16 @@ int main(int argc, char *argv[]) {
 
 
 
-  // ..................... we can add mobility here !
+  // Now define the mobility of devices we assume all device are standstill
 
   MobilityHelper mobility;
 
-  // mobility.SetPositionAllocator ("ns3::GridPositionAllocator",
-  //                                "MinX", DoubleValue (0.0),
-  //                                "MinY", DoubleValue (0.0),
-  //                                "DeltaX", DoubleValue (5.0),
-  //                                "DeltaY", DoubleValue (10.0),
-  //                                "GridWidth", UintegerValue (3),
-  //                                "LayoutType", StringValue ("RowFirst"));
-
-  // mobility.SetMobilityModel ("ns3::RandomWalk2dMobilityModel",
-  //                            "Bounds", RectangleValue (Rectangle (-50, 50, -50, 50)));
 
   mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
   mobility.Install (senderNodes);
   mobility.Install (receiverNodes);
   mobility.Install (loadBalancerNode);
 
-  // end moblity
 
   InternetStackHelper stack;
   stack.Install (loadBalancerNode);
@@ -163,17 +147,7 @@ int main(int argc, char *argv[]) {
   loadBalancerApp->SetStopTime (Seconds (10.0));
 
 
-
   Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
-
-  
-
-  // Flow monitor.
-  // Ptr<FlowMonitor> flowMonitor;
-  // FlowMonitorHelper flowHelper;
-  // flowMonitor = flowHelper.InstallAll ();
-
-  // ThroughputMonitor (&flowHelper, flowMonitor);
 
 
   Simulator::Stop (Seconds (10.0));
