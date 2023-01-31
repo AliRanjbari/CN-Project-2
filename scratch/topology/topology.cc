@@ -21,6 +21,7 @@
 #include "ns3/error-rate-model.h"
 #include "load-balancer.h"
 #include "ns3/flow-monitor-module.h"
+#include "ns3/yans-error-rate-model.h"
 #include "ns3/gnuplot.h"
 
 
@@ -80,9 +81,9 @@ int main(int argc, char *argv[]) {
 
 
   LogComponentEnable ("Topology", LOG_LEVEL_ALL);
-  LogComponentEnable ("LoadBalancer", LOG_LEVEL_ALL);
-  LogComponentEnable ("UdpEchoClientApplication", LOG_LEVEL_INFO);
-  LogComponentEnable ("PacketSink", LOG_LEVEL_INFO);
+  // LogComponentEnable ("LoadBalancer", LOG_LEVEL_ALL);
+  // LogComponentEnable ("UdpEchoClientApplication", LOG_LEVEL_INFO);
+  // LogComponentEnable ("PacketSink", LOG_LEVEL_INFO);
 
 
 
@@ -95,6 +96,7 @@ int main(int argc, char *argv[]) {
   loadBalancerNode.Create (1);
 
 
+  // set error rate
   Ptr<RateErrorModel> em = CreateObject<RateErrorModel> ();
   em->SetAttribute ("ErrorRate", DoubleValue (error));
 
@@ -102,8 +104,9 @@ int main(int argc, char *argv[]) {
 	YansWifiChannelHelper channel = YansWifiChannelHelper::Default ();
 	YansWifiPhyHelper phy;
 	phy.SetChannel (channel.Create ());
+  // phy.SetErrorRateModel (YansErrorRateModel);
+  phy.Set ("ChannelWidth", UintegerValue (20));
 
-  // phy.Set ("ChannelWidth", UintegerValue (bandWidth));
 
 	WifiHelper wifi;
   wifi.SetStandard (WifiStandard::WIFI_STANDARD_80211a);            // set standard to 802.11
@@ -127,15 +130,6 @@ int main(int argc, char *argv[]) {
 
   NetDeviceContainer apDeviceLoadBalancer;
   apDeviceLoadBalancer = wifi.Install (phy, mac, loadBalancerNode);
-
-
-  // staDeviceReceiver.Get (0)->getph
-
-  // Create error model on receiver.
-
-  // for (uint16_t i = 0; i < staDeviceReceiver.GetN (); i++)
-  //   staDeviceReceiver.Get (i)->SetAttribute ("ReceiveErrorModel", PointerValue (em));
-
 
 
   // Now define the mobility of devices we assume all device are standstill
@@ -167,18 +161,13 @@ int main(int argc, char *argv[]) {
 
   // Senders
   UdpEchoClientHelper echoClient (loadBalancerInterface.GetAddress (0), port);
-  echoClient.SetAttribute ("MaxPackets", UintegerValue (10.0));
-  echoClient.SetAttribute ("Interval", TimeValue (Seconds (1.0)));
+  echoClient.SetAttribute ("MaxPackets", UintegerValue (1000000000.0));
+  echoClient.SetAttribute ("Interval", TimeValue (Seconds (0.0001)));
   echoClient.SetAttribute ("PacketSize", UintegerValue (1024));
  
   ApplicationContainer clientApps = echoClient.Install (senderNodes);
-  clientApps.Get (0)->SetStartTime (Seconds (0.0));
-  clientApps.Get (0)->SetStopTime (Seconds (5.0));
-  clientApps.Get (1)->SetStartTime (Seconds (3.0));
-  clientApps.Get (1)->SetStopTime (Seconds (8.0));
-  clientApps.Get (2)->SetStartTime (Seconds (4.0));
-  clientApps.Get (2)->SetStopTime (Seconds (10.0));
-  
+  clientApps.Start (Seconds (0.0));
+  clientApps.Stop (Seconds (10.0));
 
   // Load Balancer
   Ptr<LoadBalancer> loadBalancerApp = CreateObject<LoadBalancer> (port, receiverInterface);
